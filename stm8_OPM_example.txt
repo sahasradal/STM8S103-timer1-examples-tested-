@@ -1,0 +1,154 @@
+stm8/
+	; timer2 PWM one pulse mode. one cycle is output on PD3 timer2_chanel1
+	#include "mapping.inc"
+	#include "stm8s103f.inc"
+	
+	
+pointerX MACRO first
+	ldw X,first
+	MEND
+pointerY MACRO first
+	ldw Y,first
+	MEND		
+	
+	
+	segment byte at 100 'ram1'
+buffer1 ds.b
+buffer2 ds.b
+buffer3 ds.b
+buffer4 ds.b
+buffer5 ds.b
+buffer6 ds.b
+buffer7 ds.b
+buffer8 ds.b
+buffer9 ds.b
+buffer10 ds.b
+buffer11 ds.b
+buffer12 ds.b
+buffer13 ds.b	; remainder byte 0 (LSB)
+buffer14 ds.b	; remainder byte 1
+buffer15 ds.b	; remainder byte 2
+buffer16 ds.b	; remainder byte 3 (MSB)
+buffer17 ds.b	; loop counter
+captureH ds.b
+captureL ds.b	
+captureHS ds.b
+captureLS ds.b
+capture_state ds.b	
+nibble1  ds.b
+data	 ds.b
+address  ds.b
+signbit  ds.b
+state    ds.b
+temp1    ds.b
+result4  ds.b
+result3  ds.b
+result2  ds.b
+result1  ds.b
+counter1 ds.b
+counter2 ds.b
+buffers  ds.b 23		
+		
+	
+	
+	
+	
+	segment 'rom'
+main.l
+	; initialize SP
+	ldw X,#stack_end
+	ldw SP,X
+
+	#ifdef RAM0	
+	; clear RAM0
+ram0_start.b EQU $ram0_segment_start
+ram0_end.b EQU $ram0_segment_end
+	ldw X,#ram0_start
+clear_ram0.l
+	clr (X)
+	incw X
+	cpw X,#ram0_end	
+	jrule clear_ram0
+	#endif
+
+	#ifdef RAM1
+	; clear RAM1
+ram1_start.w EQU $ram1_segment_start
+ram1_end.w EQU $ram1_segment_end	
+	ldw X,#ram1_start
+clear_ram1.l
+	clr (X)
+	incw X
+	cpw X,#ram1_end	
+	jrule clear_ram1
+	#endif
+
+	; clear stack
+stack_start.w EQU $stack_segment_start
+stack_end.w EQU $stack_segment_end
+	ldw X,#stack_start
+clear_stack.l
+	clr (X)
+	incw X
+	cpw X,#stack_end	
+	jrule clear_stack
+
+infinite_loop.l
+
+	mov CLK_CKDIVR,#$0    	; set max internal clock 16mhz
+timer2setup:	  
+	mov TIM2_PSCR,#$0      	; timer 2 prescaler div by 0 runs at FCPU 16mhz
+	mov TIM2_ARRH,#$7d     	; count to 32000 ,high byte must be loaded  first,
+	mov TIM2_ARRL,#$00     	; frequency of signal becomes 16000000/32000=500hz or 0.5khz
+	mov TIM2_CCR2H,#$0c    	; compare register set to 3200 =10% of count, duty cycle 
+	mov TIM2_CCR2L,#$80 	; duty cycle is either 10% or 90% bassed on poarity (32000/3200)=10,320=1%
+	bset TIM2_CCER1,#5 	; setting polarity bit of timer2 makes ch2 output opposite,comment out if need not  
+	mov TIM2_CCMR2,#$60 	; set to PWM mode 1
+	bset TIM2_CCMR2,#3	; OC2PE: Output compare 2 preload enable
+	bset TIM2_CCER1,#4    	; enable chan 2 as output
+	bset TIM2_CR1,#7	; auto preload enable
+	bset TIM2_CR1,#3	; enable one pulse mode opm
+	bset TIM2_CR1,#0      	; set CEN bit to enable the timer	  
+here:
+	jp here	
+
+
+	interrupt NonHandledInterrupt
+NonHandledInterrupt.l
+	iret
+
+	segment 'vectit'
+	dc.l {$82000000+main}									; reset
+	dc.l {$82000000+NonHandledInterrupt}	; trap
+	dc.l {$82000000+NonHandledInterrupt}	; irq0
+	dc.l {$82000000+NonHandledInterrupt}	; irq1
+	dc.l {$82000000+NonHandledInterrupt}	; irq2
+	dc.l {$82000000+NonHandledInterrupt}	; irq3
+	dc.l {$82000000+NonHandledInterrupt}	; irq4
+	dc.l {$82000000+NonHandledInterrupt}	; irq5
+	dc.l {$82000000+NonHandledInterrupt}	; irq6
+	dc.l {$82000000+NonHandledInterrupt}	; irq7
+	dc.l {$82000000+NonHandledInterrupt}	; irq8
+	dc.l {$82000000+NonHandledInterrupt}	; irq9
+	dc.l {$82000000+NonHandledInterrupt}	; irq10
+	dc.l {$82000000+NonHandledInterrupt}	; irq11
+	dc.l {$82000000+NonHandledInterrupt}	; irq12
+	dc.l {$82000000+NonHandledInterrupt}	; irq13
+	dc.l {$82000000+NonHandledInterrupt}	; irq14
+	dc.l {$82000000+NonHandledInterrupt}	; irq15
+	dc.l {$82000000+NonHandledInterrupt}	; irq16
+	dc.l {$82000000+NonHandledInterrupt}	; irq17
+	dc.l {$82000000+NonHandledInterrupt}	; irq18
+	dc.l {$82000000+NonHandledInterrupt}	; irq19
+	dc.l {$82000000+NonHandledInterrupt}	; irq20
+	dc.l {$82000000+NonHandledInterrupt}	; irq21
+	dc.l {$82000000+NonHandledInterrupt}	; irq22
+	dc.l {$82000000+NonHandledInterrupt}	; irq23	
+	dc.l {$82000000+NonHandledInterrupt}	; irq24
+	dc.l {$82000000+NonHandledInterrupt}	; irq25
+	dc.l {$82000000+NonHandledInterrupt}	; irq26
+	dc.l {$82000000+NonHandledInterrupt}	; irq27
+	dc.l {$82000000+NonHandledInterrupt}	; irq28
+	dc.l {$82000000+NonHandledInterrupt}	; irq29
+
+	end
